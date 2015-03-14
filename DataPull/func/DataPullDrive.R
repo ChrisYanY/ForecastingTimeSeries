@@ -1,0 +1,15 @@
+args    = commandArgs(trailingOnly = TRUE)
+db_path = args[1]
+fc_path = args[2]
+source(paste0(fc_path, "DataPullFunc.R"))
+
+
+
+nasdaq.tickers = c("GOOGL", "YHOO", "FB", "MSFT")
+# dow30.tickers <- c("MMM", "AA", "AXP", "T", "BAC", "BA", "CAT", "CVX", "C", "KO", "DD",
+#                    "XOM", "GE", "GM", "HPQ", "HD", "INTC", "IBM", "JNJ", "JPM", "KFT",
+#                    "MCD", "MRK", "MSFT", "PFE", "PG", "UTX", "VZ", "WMT", "DIS")
+
+nasdaq = get.multiple.quotes(nasdaq.tickers)
+
+write.csv(nasdaq, file = db_path)
