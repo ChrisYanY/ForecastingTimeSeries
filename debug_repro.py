@@ -31,6 +31,11 @@ for t in tickers:
             # But let's see if json.dumps fails.
             json_str = json.dumps(res) 
             print(f"Success! Metrics: {res['metrics']}")
+            print(f"Keys: {res.keys()}")
+            if 'dates' in res:
+                print(f"Dates length: {len(res['dates'])}")
+                print(f"First date: {res['dates'][0]}")
+                print(f"Last date: {res['dates'][-1]}")
         else:
             print("Returned None")
     except Exception as e:

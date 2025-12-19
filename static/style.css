@@ -280,3 +280,24 @@ body.light-mode .expand-btn img {
     width: 100%;
     min-height: 0;
 }
+
+.time-range-selector {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.time-range-selector button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.time-range-selector button:hover {
+    border-color: var(--accent);
+    color: var(--text);
+}

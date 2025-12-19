@@ -61,6 +61,34 @@ def fetch_data(tickers, start_date, end_date):
                 return None
     return None
 
+def fetch_intraday_data(ticker, period="1mo", interval="60m"):
+    """
+    Fetches intraday data for high-resolution charts.
+    """
+    try:
+        data = yf.download(ticker, period=period, interval=interval, progress=False)
+        if data is None or data.empty:
+            return None
+            
+        # Handle MultiIndex
+        if hasattr(data, 'columns') and isinstance(data.columns, pd.MultiIndex):
+             if ticker in data.columns.levels[1]:
+                  data = data.xs(ticker, axis=1, level=1)
+                  
+        if 'Close' not in data.columns:
+             return None
+             
+        # Format index to string
+        # Intraday index is Datetime with timezone
+        dates = data.index.strftime('%Y-%m-%d %H:%M').tolist()
+        prices = data['Close'].tolist()
+        
+        return {'dates': dates, 'prices': prices}
+        
+    except Exception as e:
+        logger.error(f"Error fetching intraday data for {ticker}: {e}")
+        return None
+
 def create_sequences(data, seq_length):
     """
     Create sequences for LSTM: (samples, time_steps, features)

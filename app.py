@@ -11,7 +11,7 @@ import logging
 # Ensure src is in path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
-from data_pull import fetch_data, preprocess_data
+from data_pull import fetch_data, preprocess_data, fetch_intraday_data
 from forecast_model import LSTMModel, train_model, predict
 
 from flask_apscheduler import APScheduler
@@ -182,20 +182,52 @@ def generate_forecast(ticker):
         mse = np.mean((y_true - y_pred) ** 2)
         mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
         
-        # Calculate Technicals for Full History
         full_history_prices = raw_prices.flatten()
         mas, trend_points = calculate_technicals(full_history_prices)
         
+        # Intraday Data for High-Res View
+        intraday_data = fetch_intraday_data(ticker, period="1mo", interval="60m")
+        
+        # Dates
+        # df.index usually contains the dates. 
+        # Check if index is datetime
+        try:
+            history_dates = df.index.strftime('%Y-%m-%d').tolist()
+        except:
+            # Fallback if index is not datetime (e.g. integer)
+            history_dates = [f"D{i}" for i in range(len(full_history_prices))]
+
+        # Generate Future Dates (Business Days)
+        last_date_str = history_dates[-1]
+        try:
+            last_date = datetime.datetime.strptime(last_date_str, '%Y-%m-%d').date()
+        except:
+             last_date = datetime.date.today()
+             
+        future_dates = []
+        curr = last_date
+        for _ in range(len(future_path) - 1): # First point of future path is last actual
+            curr += datetime.timedelta(days=1)
+            # Simple skip weekends check
+            while curr.weekday() >= 5:
+                curr += datetime.timedelta(days=1)
+            future_dates.append(curr.strftime('%Y-%m-%d'))
+            
+        # Full Dates = History + Future
+        full_dates = history_dates + future_dates
+
         result = {
             'ticker': ticker,
             'metrics': { 'mse': float(mse), 'mape': float(mape) },
             'backtest': { 'actual': actual_path[1:], 'predicted': pred_path[1:] },
             'forecast': future_path[1:],
             'full_history': [float(x) for x in full_history_prices],
+            'dates': full_dates,
             'technicals': {
                 'mas': mas,
                 'trend_points': trend_points
             },
+            'intraday': intraday_data,
             'last_updated': datetime.datetime.now().isoformat()
         }
         return sanitize_for_json(result)

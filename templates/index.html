@@ -37,6 +37,13 @@
             <span class="close-btn" onclick="closeModal()">&times;</span>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <h2 id="modalTitle" style="margin: 0;"></h2>
+                <div class="time-range-selector">
+                    <button onclick="updateChartRange('1d')">1d</button>
+                    <button onclick="updateChartRange('3d')">3d</button>
+                    <button onclick="updateChartRange('7d')">7d</button>
+                    <button onclick="updateChartRange('1m')">1m</button>
+                    <button onclick="updateChartRange('All')">All</button>
+                </div>
             </div>
             <div id="detailChartContainer">
                 <canvas id="detailChart"></canvas>
