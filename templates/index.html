@@ -32,6 +32,18 @@
         </div>
     </div>
 
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 id="modalTitle" style="margin: 0;"></h2>
+            </div>
+            <div id="detailChartContainer">
+                <canvas id="detailChart"></canvas>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/script.js"></script>
 </body>
 

@@ -8,44 +8,58 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+import time
+
 def fetch_data(tickers, start_date, end_date):
     """
     Fetch historical data for given tickers.
     """
     logger.info(f"Fetching data for {tickers} from {start_date} to {end_date}")
-    try:
-        data = yf.download(tickers, start=start_date, end=end_date)
-        
-        # Check for empty data
-        if data is None or data.empty:
-             return None
-
-        # yfinance return structure varies. 
-        # Usually it is MultiIndex columns with levels (Price, Ticker)
-        # We want 'Adj Close' or 'Close'
-        
-        target_col = 'Adj Close'
-        # Check if 'Adj Close' is in the top level of columns
-        if isinstance(data.columns, pd.MultiIndex):
-             if 'Adj Close' not in data.columns.get_level_values(0):
-                 target_col = 'Close'
-        else:
-             if 'Adj Close' not in data.columns:
-                 target_col = 'Close'
-
-        logger.info(f"Using column: {target_col}")
-        
-        if isinstance(data.columns, pd.MultiIndex):
-            # If we simply select data[target_col], we get a DF with tickers as columns
-            data = data[target_col]
-        else:
-             # Single level, might provide Open, High, Low, Close, etc.
-             data = data[[target_col]]
-        
-        return data
-    except Exception as e:
-        logger.error(f"Error fetching data: {e}")
-        return None
+    
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            data = yf.download(tickers, start=start_date, end=end_date, progress=False)
+            
+            # Check for empty data
+            if data is None or data.empty:
+                logger.warning(f"Empty data returned for {tickers} on attempt {attempt+1}")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt) # Backoff 1s, 2s...
+                    continue
+                return None
+    
+            # yfinance return structure varies. 
+            # Usually it is MultiIndex columns with levels (Price, Ticker)
+            # We want 'Adj Close' or 'Close'
+            
+            target_col = 'Adj Close'
+            # Check if 'Adj Close' is in the top level of columns
+            if isinstance(data.columns, pd.MultiIndex):
+                 if 'Adj Close' not in data.columns.get_level_values(0):
+                     target_col = 'Close'
+            else:
+                 if 'Adj Close' not in data.columns:
+                     target_col = 'Close'
+    
+            logger.info(f"Using column: {target_col}")
+            
+            if isinstance(data.columns, pd.MultiIndex):
+                # If we simply select data[target_col], we get a DF with tickers as columns
+                data = data[target_col]
+            else:
+                 # Single level, might provide Open, High, Low, Close, etc.
+                 data = data[[target_col]]
+            
+            return data
+            
+        except Exception as e:
+            logger.error(f"Error fetching data (attempt {attempt+1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+            else:
+                return None
+    return None
 
 def create_sequences(data, seq_length):
     """

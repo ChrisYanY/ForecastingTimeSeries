@@ -70,7 +70,12 @@ async function addTicker(tickerOverride = null) {
     card.className = 'card';
     card.innerHTML = `
         <div class="card-header">
-            <div class="card-title">${ticker}</div>
+            <div class="card-title">
+                ${ticker} 
+                <button class="expand-btn" onclick='openDetailedView(${JSON.stringify(ticker)})' title="Expand View">
+                    <img src="/static/expand-icon.png" alt="Expand">
+                </button>
+            </div>
             <div class="status" id="status-${cardId}">Loading... <div class="loader"></div></div>
         </div>
         <div class="chart-container">
@@ -85,6 +90,12 @@ async function addTicker(tickerOverride = null) {
     try {
         const response = await fetch(`/api/predict/${ticker}`);
         const data = await response.json();
+
+        // Attach data to the window or button to be accessible later.
+        // Actually passing it via onclick closure is tricky if data is huge.
+        // Better: store in a global map
+        window.FULL_DATA_CACHE = window.FULL_DATA_CACHE || {};
+        window.FULL_DATA_CACHE[ticker] = data;
 
         if (response.status !== 200) {
             document.getElementById(`status-${cardId}`).innerHTML = `<span style="color: #ef4444">${data.error}</span>`;
@@ -111,36 +122,56 @@ async function addTicker(tickerOverride = null) {
     }
 }
 
+// Global variable for detailed chart instance
+let detailedChart = null;
+
+function openDetailedView(ticker) {
+    const data = window.FULL_DATA_CACHE[ticker];
+    if (!data) return;
+
+    document.getElementById('modal').style.display = 'block';
+    document.getElementById('modalTitle').innerText = `${ticker} - Detailed Analysis`;
+
+    renderDetailedChart(data);
+}
+
+function closeModal() {
+    document.getElementById('modal').style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function (event) {
+    const modal = document.getElementById('modal');
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+}
+
 function renderChart(cardId, data) {
+    // ... Existing small chart render ...
     const ctx = document.getElementById(`canvas-${cardId}`).getContext('2d');
+    const isLight = document.body.classList.contains('light-mode');
 
-    // Data Preparation
-    const actual = data.backtest.actual; // Array of actual prices
-    const predicted = data.backtest.predicted; // Array of predicted backtest prices
-    const forecast = data.forecast; // Array of future predictions
+    // Prepare Data for Small Chart (Test + Forecast)
+    // We only show "backtest" area + forecast for the small card
+    const actual = data.backtest.actual;
+    const predicted = data.backtest.predicted;
+    const forecast = data.forecast;
 
-    // Labels (indices for now)
+    // ... [Reuse existing logic, but clean up references to 'data'] ...
+    // Simplified Logic for replace:
+
     const totalPoints = actual.length + forecast.length;
     const labels = Array.from({ length: totalPoints }, (_, i) => i);
 
-    // Alignment
-    // Actual: [0 ... N-1]
-    // Predicted Backtest: [0 ... N-1]
-    // Forecast: [N ... N+M]
-
-    // Create dataset arrays with nulls for correct overlap
     const plotActual = actual.concat(new Array(forecast.length).fill(null));
     const plotPredicted = predicted.concat(new Array(forecast.length).fill(null));
 
-    // For forecast, we need to start where actual ended?
-    // Let's connect the last point of actual to the first point of forecast visually
     const lastActual = actual[actual.length - 1];
     const plotForecast = new Array(actual.length - 1).fill(null);
-    plotForecast.push(lastActual); // Connector
+    plotForecast.push(lastActual);
     plotForecast.push(...forecast);
 
-    // Check theme for colors
-    const isLight = document.body.classList.contains('light-mode');
     const actualColor = isLight ? '#64748b' : '#94a3b8';
     const gridColor = isLight ? '#cbd5e1' : '#334155';
     const textColor = isLight ? '#0f172a' : '#f8fafc';
@@ -163,9 +194,9 @@ function renderChart(cardId, data) {
                     tension: 0.1
                 },
                 {
-                    label: 'Backtest Model',
+                    label: 'Backtest',
                     data: plotPredicted,
-                    borderColor: '#38bdf8', // Blue
+                    borderColor: '#38bdf8', /* Sky Blue */
                     borderWidth: 1,
                     borderDash: [5, 5],
                     pointRadius: 0,
@@ -174,10 +205,134 @@ function renderChart(cardId, data) {
                 {
                     label: 'Forecast',
                     data: plotForecast,
-                    borderColor: '#4ade80', // Green
+                    borderColor: '#4ade80', /* Green */
                     borderWidth: 2,
                     pointRadius: 2,
                     tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { labels: { color: textColor } },
+                tooltip: { mode: 'index', intersect: false }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    grid: { color: gridColor },
+                    ticks: { color: textColor }
+                }
+            }
+        }
+    });
+}
+
+function renderDetailedChart(data) {
+    const ctx = document.getElementById('detailChart').getContext('2d');
+    const isLight = document.body.classList.contains('light-mode');
+    const textColor = isLight ? '#0f172a' : '#f8fafc';
+    const gridColor = isLight ? '#cbd5e1' : '#334155';
+
+    if (detailedChart) {
+        detailedChart.destroy();
+    }
+
+    // Full History Data
+    const prices = data.full_history;
+    const labels = Array.from({ length: prices.length }, (_, i) => i);
+
+    // Technicals
+    const ma15 = data.technicals.mas.ma15;
+    const ma30 = data.technicals.mas.ma30;
+    const ma60 = data.technicals.mas.ma60;
+    const ma180 = data.technicals.mas.ma180;
+
+    // Trend Points
+    const trendPoints = data.technicals.trend_points;
+    const scatterData = trendPoints.map(p => ({
+        x: p.index,
+        y: p.value,
+        type: p.type
+    }));
+
+    // Separate Peaks and Valleys for styling
+    const peaks = scatterData.filter(d => d.type === 'peak' || d.type === 'peark'); // Handle type
+    const valleys = scatterData.filter(d => d.type === 'valley');
+
+    detailedChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Price',
+                    data: prices,
+                    borderColor: isLight ? '#0f172a' : '#f8fafc',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    order: 1
+                },
+                {
+                    label: 'MA15',
+                    data: ma15,
+                    borderColor: '#f472b6', /* Pink */
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    borderDash: [2, 2],
+                    tension: 0.2,
+                    order: 2
+                },
+                {
+                    label: 'MA30',
+                    data: ma30,
+                    borderColor: '#a78bfa', /* Purple */
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    borderDash: [2, 2],
+                    tension: 0.2,
+                    order: 3
+                },
+                {
+                    label: 'MA60',
+                    data: ma60,
+                    borderColor: '#fbbf24', /* Amber */
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    tension: 0.2,
+                    order: 4
+                },
+                {
+                    label: 'MA180',
+                    data: ma180,
+                    borderColor: '#ef4444', /* Red */
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    tension: 0.2,
+                    order: 5
+                },
+                {
+                    label: 'Peaks',
+                    data: peaks,
+                    type: 'scatter',
+                    backgroundColor: '#10b981', // Green for sell signal? Or just highlight
+                    pointRadius: 6,
+                    pointStyle: 'triangle',
+                    order: 0
+                },
+                {
+                    label: 'Valleys',
+                    data: valleys,
+                    type: 'scatter',
+                    backgroundColor: '#ef4444', // Red 
+                    pointRadius: 6,
+                    pointStyle: 'triangle',
+                    rotation: 180, // Inverted triangle
+                    order: 0
                 }
             ]
         },
@@ -192,22 +347,20 @@ function renderChart(cardId, data) {
                 legend: {
                     labels: { color: textColor }
                 },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false
+                title: {
+                    display: true,
+                    text: 'Long Term Trend & Key Inflection Points',
+                    color: textColor
                 }
             },
             scales: {
                 x: {
-                    display: false // Sparkline feel
+                    grid: { display: false },
+                    ticks: { display: false } // Hide dates for cleanliness or show? Hide for now as they are indices
                 },
                 y: {
-                    grid: {
-                        color: gridColor
-                    },
-                    ticks: {
-                        color: textColor
-                    }
+                    grid: { color: gridColor },
+                    ticks: { color: textColor }
                 }
             }
         }

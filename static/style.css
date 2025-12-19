@@ -187,3 +187,96 @@ body.light-mode .metrics-overlay {
         transform: rotate(360deg);
     }
 }
+
+.expand-btn {
+    background: none;
+    border: none;
+    /* No border for icon */
+    padding: 0;
+    margin-left: 0.5rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.expand-btn img {
+    width: 16px;
+    height: 16px;
+    filter: invert(1);
+    /* Invert for dark mode (assuming icon is black) */
+}
+
+/* In light mode, if icon is black, we don't need invert. 
+   If icon is white, we invert. 
+   Let's check the icon. It looks black in the screenshot (or dark grey). 
+   Actually it looks like a black/dark arrow. 
+   So in Dark Mode (default bg), we need to invert it to white.
+   In Light Mode (white bg), we keep it black (remove invert).
+*/
+
+body:not(.light-mode) .expand-btn img {
+    filter: invert(1);
+    /* Make white on dark bg */
+}
+
+body.light-mode .expand-btn img {
+    filter: none;
+    /* Keep original (dark) on light bg */
+}
+
+.expand-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background-color: var(--card-bg);
+    margin: 5% auto;
+    padding: 2rem;
+    border: 1px solid var(--border);
+    width: 90%;
+    height: 85%;
+    border-radius: 1rem;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.close-btn {
+    color: var(--text-muted);
+    float: right;
+    font-size: 2rem;
+    font-weight: bold;
+    cursor: pointer;
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    z-index: 10;
+}
+
+.close-btn:hover {
+    color: var(--text);
+}
+
+#detailChartContainer {
+    flex: 1;
+    position: relative;
+    width: 100%;
+    min-height: 0;
+}
