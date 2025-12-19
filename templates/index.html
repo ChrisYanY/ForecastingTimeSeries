@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity Forecast</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="light-mode">
+    <div class="container">
+        <header>
+            <div style="position: absolute; top: 2rem; right: 2rem;">
+                <button onclick="toggleTheme()" style="padding: 0.5rem 1rem; font-size: 0.8rem;">Switch Theme</button>
+            </div>
+            <h1>Market Forecast</h1>
+            <p>Deep Learning Time Series Prediction</p>
+        </header>
+
+        <div class="search-bar">
+            <input type="text" id="tickerInput" placeholder="Enter Ticker (e.g. AAPL, GOOGL)" value="GOOGL">
+            <button onclick="addTicker()">Analyze</button>
+        </div>
+
+        <div id="grid" class="grid">
+            <!-- Cards will be injected here -->
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+
+</html>
